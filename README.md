@@ -1,4 +1,4 @@
-# md-wrap-code-blocks
+# md-wrap-code
 
 Command line utility that wraps markdown code blocks
 
