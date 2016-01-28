@@ -1,0 +1,80 @@
+#!/usr/bin/env node
+
+var _ = require('lodash');
+var program = require('commander');
+var pkg = require('./package');
+var os = require('os');
+
+program
+  .version(pkg.version)
+  .description(pkg.description)
+  .usage('[option] [input]')
+  .option('-n, --newline [n]', 'Wrap with new line(s). Defaults to 1.', parseInt)
+  .option('-s, --space [n]', 'Wrap with space(s). Defaults to 1.', parseInt)
+  .option('-t, --tab [n]', 'Wrap with tab(s). Defaults to 1.', parseInt)
+  .option('-c, --custom <chars>', 'Wrap with custom string.')
+  .parse(process.argv);
+
+if (!String.prototype.splice) {
+  String.prototype.splice = function (start, delCount, newSubStr) {
+    return this.slice(0, start) + newSubStr + this.slice(start + Math.abs(delCount));
+  };
+}
+
+if (!String.prototype.repeat) {
+  String.prototype.repeat = function (count) {
+    if (count < 1) return '';
+    var result = '', pattern = this.valueOf();
+    while (count > 1) {
+      if (count & 1) result += pattern;
+      count >>>= 1, pattern += pattern;
+    }
+    return result + pattern;
+  }
+}
+
+if (_.isNaN(program.newline) ||
+  _.isNaN(program.space) ||
+  _.isNaN(program.tab)) {
+  console.error('Invalid option argument');
+  process.exit(-1);
+}
+
+var ws = '';
+if (program.newline === true || _.isFinite(program.newline)) {
+  ws = program.newline === true ? os.EOL : os.EOL.repeat(program.newline);
+}
+else if (program.space === true || _.isFinite(program.space)) {
+  ws = program.space === true ? ' ' : ' '.repeat(program.space);
+}
+else if (program.tab === true || _.isFinite(program.tab)) {
+  ws = program.tab === true ? '\t' : '\t'.repeat(program.tab);
+}
+else if (program.custom) {
+  ws = program.custom;
+}
+
+var inside = false;
+function transform(data) {
+  var i = 0;
+
+  function find() {
+    i = data.indexOf('```', i);
+    return i >= 0;
+  }
+
+  while (data && find()) {
+    var insert = inside ? i + 3 : i;
+    data = data.splice(insert, 0, os.EOL);
+    inside = !inside;
+    i = i + 3;
+  }
+
+  return data;
+}
+
+process.stdin.resume();
+process.stdin.setEncoding('utf8');
+process.stdin.on('data', function (data) {
+  process.stdout.write(transform(data));
+});
